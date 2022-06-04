@@ -1,0 +1,13 @@
+<resources>
+    <string name="app_name">What Wheather</string>
+    <string name="location">location</string>
+    <string name="time">time</string>
+    <string name="temperature">temperature</string>
+    <string name="differ">differ</string>
+    <string name="rain">rain</string>
+    <string name="pollution">pollution</string>
+    <string name="weatherinfo">weatherinfo</string>
+    <string name="clothinfo">clothinfo</string>
+    <string name="comment">comment</string>
+    <string name="goodorbad">goodorbad</string>
+</resources>
