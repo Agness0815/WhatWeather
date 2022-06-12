@@ -1,5 +1,7 @@
 package com.example.whatwheather;
 
+import static com.example.whatwheather.TransLocalPoint.TO_GRID;
+
 import android.Manifest;
 import android.app.AlertDialog;
 import android.content.DialogInterface;
@@ -35,6 +37,7 @@ import java.util.Locale;
 
 public class MainActivity extends AppCompatActivity
 {
+
     TextView timeView;
     String url = "https://www.google.com/search?q=%EB%82%A0%EC%94%A8&sourceid=chrome&ie=UTF-8";
     String bt1_url = "https://www.musinsa.com/app/styles/views/27196?use_yn_360=&style_type=&brand=&model=&tag_no=&max_rt=&min_rt=&display_cnt=60&list_kind=big&sort=date&page=1",
@@ -43,16 +46,17 @@ public class MainActivity extends AppCompatActivity
     int temp_int,differ_int, rain_int, wind_int;
     final Bundle bundle = new Bundle();
 
-    private GpsTracker gpsTracker;
     private static final int GPS_ENABLE_REQUEST_CODE = 2001;
     private static final int PERMISSIONS_REQUEST_CODE = 100;
+    private TransLocalPoint transLocalPoint;
+    private GpsTracker gpsTracker;
     String[] REQUIRED_PERMISSIONS  = {Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION};
-
 
 
     @Override
     protected void onCreate(Bundle savedInstanceState)
     {
+
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         final TextView textView = (TextView) findViewById(R.id.temperatureView);
@@ -217,7 +221,7 @@ public class MainActivity extends AppCompatActivity
         final TextView textview_address = (TextView)findViewById(R.id.locationView);
 
 
-        gpsTracker = new GpsTracker(MainActivity.this);
+        GpsTracker gpsTracker = new GpsTracker(MainActivity.this);
 
         double latitude = gpsTracker.getLatitude();
         double longitude = gpsTracker.getLongitude();
@@ -225,6 +229,11 @@ public class MainActivity extends AppCompatActivity
         String address = getCurrentAddress(latitude, longitude);
         textview_address.setText(address);
 
+        transLocalPoint = new TransLocalPoint();
+        TransLocalPoint.LatXLngY tmp = transLocalPoint.convertGRID_GPS(TO_GRID, latitude, longitude);
+
+        long mNow = System.currentTimeMillis();
+        Date mReDate;
 
     }
 
