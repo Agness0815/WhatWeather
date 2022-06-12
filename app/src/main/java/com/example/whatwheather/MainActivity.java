@@ -8,8 +8,13 @@ import android.content.pm.PackageManager;
 import android.location.Address;
 import android.location.Geocoder;
 import android.location.LocationManager;
+import android.net.Uri;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Message;
 import android.util.Log;
+import android.view.View;
+import android.widget.ImageButton;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -17,6 +22,10 @@ import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
+
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
 
 import java.io.IOException;
 import java.text.SimpleDateFormat;
@@ -27,6 +36,12 @@ import java.util.Locale;
 public class MainActivity extends AppCompatActivity
 {
     TextView timeView;
+    String url = "https://www.google.com/search?q=%EB%82%A0%EC%94%A8&sourceid=chrome&ie=UTF-8";
+    String bt1_url = "https://www.musinsa.com/app/styles/views/27196?use_yn_360=&style_type=&brand=&model=&tag_no=&max_rt=&min_rt=&display_cnt=60&list_kind=big&sort=date&page=1",
+            bt2_url = "https://www.musinsa.com/app/styles/views/27234?use_yn_360=&style_type=&brand=&model=&tag_no=&max_rt=&min_rt=&display_cnt=60&list_kind=big&sort=date&page=1";
+    String temp, rain, htemp, ltemp, ws;
+    int temp_int,differ_int, rain_int, wind_int;
+    final Bundle bundle = new Bundle();
 
     private GpsTracker gpsTracker;
     private static final int GPS_ENABLE_REQUEST_CODE = 2001;
@@ -40,7 +55,129 @@ public class MainActivity extends AppCompatActivity
     {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        final TextView textView = (TextView) findViewById(R.id.timeView);
+        final TextView textView = (TextView) findViewById(R.id.temperatureView);
+        final TextView timeText = (TextView) findViewById(R.id.timeView);
+        final TextView rainText = (TextView) findViewById(R.id.rainView);
+        final TextView diffText = (TextView) findViewById(R.id.differView);
+        final TextView wsText = (TextView) findViewById(R.id.wsView);
+        final TextView commentText = (TextView) findViewById(R.id.commentView);
+        final ImageButton suggest1 = (ImageButton) findViewById(R.id.imageView1);
+        final ImageButton suggest2 = (ImageButton) findViewById(R.id.imageView2);
+
+        Handler handler = new Handler(){        //온도 웹크롤링 코드 시작
+
+            @Override
+            public void handleMessage(Message msg){
+                Bundle bundle = msg.getData();
+                textView.setText(bundle.getString("temperature") + "°C");      //52번재 줄처럼 인터페이스에 있는 id랑 연결시켜야 함.
+                rainText.setText("강수 확률: " + bundle.getString("rain"));
+                diffText.setText(bundle.getString("htemp")
+                        + "°C / " + bundle.getString("ltemp") + "°C");
+                wsText.setText("풍속: " + bundle.getString("windspeed"));
+
+                if(differ_int > 15){
+                    commentText.setText("일교차가 큽니다. 외투를 챙기세요.");
+                }
+                if(rain_int > 50){
+                    commentText.setText("강수 확률이 높습니다. 우산을 챙기세요.");
+                }
+                if(wind_int > 10){
+                    commentText.setText("바람이 많이 붑니다. 외투를 챙기세요.");
+                }
+
+                if(temp_int >= 20){
+                    suggest1.setImageResource(R.drawable.hot_1);
+                    suggest2.setImageResource(R.drawable.hot_2);
+
+                    bt1_url = "https://www.musinsa.com/app/styles/views/27196?use_yn_360=&style_type=&brand=&model=&tag_no=&max_rt=&min_rt=&display_cnt=60&list_kind=big&sort=date&page=1";
+                    bt2_url = "https://www.musinsa.com/app/styles/views/27234?use_yn_360=&style_type=&brand=&model=&tag_no=&max_rt=&min_rt=&display_cnt=60&list_kind=big&sort=date&page=1";
+
+                }
+                else if (temp_int < 20 && temp_int >= 15){
+                    suggest1.setImageResource(R.drawable.warm_1);
+                    suggest2.setImageResource(R.drawable.warm_2);
+
+                    bt1_url = "https://www.musinsa.com/app/styles/views/25805?use_yn_360=&style_type=&brand=&model=&tag_no=&max_rt=&min_rt=&display_cnt=60&list_kind=big&sort=date&page=12";
+                    bt2_url = "https://www.musinsa.com/app/styles/views/25843?use_yn_360=&style_type=&brand=&model=&tag_no=&max_rt=&min_rt=&display_cnt=60&list_kind=big&sort=date&page=11";
+                }
+                else if (temp_int < 15 && temp_int >= 10){
+                    suggest1.setImageResource(R.drawable.cold_1);
+                    suggest2.setImageResource(R.drawable.cold_2);
+
+                    bt1_url = "https://www.musinsa.com/app/styles/views/25240";
+                    bt2_url = "https://www.musinsa.com/app/styles/views/25020";
+                }
+                else if (temp_int < 10 && temp_int >= 5){
+                    suggest1.setImageResource(R.drawable.v_cold_1);
+                    suggest2.setImageResource(R.drawable.v_cold_2);
+
+                    bt1_url = "https://www.musinsa.com/app/styles/views/24890";
+                    bt2_url = "https://www.musinsa.com/app/styles/views/24605";
+                }
+                else if (temp_int < 5){
+                    suggest1.setImageResource(R.drawable.super_cold_1);
+                    suggest2.setImageResource(R.drawable.super_cold_2);
+
+                    bt1_url = "https://www.musinsa.com/app/styles/views/25292";
+                    bt2_url = "https://www.musinsa.com/app/styles/views/24615";
+                }
+
+            }
+        };
+
+        suggest1.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Intent urlintent = new Intent(Intent.ACTION_VIEW, Uri.parse(bt1_url));
+                startActivity(urlintent);
+            }
+        });
+        suggest2.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Intent urlintent = new Intent(Intent.ACTION_VIEW, Uri.parse(bt2_url));
+                startActivity(urlintent);
+            }
+        });
+
+
+        new Thread(){
+            @Override
+            public void run() {
+                Document doc = null;
+                try {
+                    doc = Jsoup.connect(url).get();
+                    Element elements = doc.select("#wob_tm").first();   //온도
+                    Element elements2 = doc.select("#wob_pp").first();  //강수확률
+                    Element elements3 = doc.select(".gNCp2e span").first();  //highest 온도
+                    Element elements4 = doc.select(".QrNVmd.ZXCv8e span").first();  //lowest 온도
+                    Element elements5 = doc.select("#wob_ws").first();  //풍속
+
+                    temp = elements.text();
+                    rain = elements2.text();
+                    htemp = elements3.text();
+                    ltemp = elements4.text();
+                    ws = elements5.text();
+
+                    temp_int = Integer.parseInt(temp);
+                    differ_int = Integer.parseInt(htemp) - (Integer.parseInt(ltemp) + 1);
+                    rain_int = Integer.parseInt(rain.substring(0,rain.length() - 1));
+                    wind_int = Integer.parseInt(ws.substring(0,ws.length() - 3));
+
+                    bundle.putString("temperature", temp);
+                    bundle.putString("rain", rain);
+                    bundle.putString("htemp", htemp);
+                    bundle.putString("ltemp", ltemp);
+                    bundle.putString("windspeed", ws);
+
+                    Message msg = handler.obtainMessage();
+                    msg.setData(bundle);
+                    handler.sendMessage(msg);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        }.start();          //온도 웹크롤링 코드 끝
 
         (new Thread(new Runnable()
         {
@@ -58,7 +195,7 @@ public class MainActivity extends AppCompatActivity
                             @Override
                             public void run()
                             {
-                                textView.setText(getCurrentTime());
+                                timeText.setText(getCurrentTime());
                             }
                         });
                     }
@@ -94,7 +231,7 @@ public class MainActivity extends AppCompatActivity
     public String getCurrentTime(){
         long time = System.currentTimeMillis();
 
-        SimpleDateFormat dayTime = new SimpleDateFormat("yyyy-mm-dd hh:mm:ss");
+        SimpleDateFormat dayTime = new SimpleDateFormat("yyyy년MM월dd일 hh시mm분ss초");
 
         String str = dayTime.format(new Date(time));
 
